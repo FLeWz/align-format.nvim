@@ -45,6 +45,40 @@ local function align_equals(lines)
 	end
 end
 
+local function align_includes(lines)
+	local indexes = {}
+	local includes = {}
+
+	for i, line in ipairs(lines) do
+		local opening, path = line:match("^%s*#include%s+([<\"])(.-)[>\"]")
+
+		if opening and path then
+			table.insert(indexes, i)
+			table.insert(includes, {
+				line = line,
+				opening = opening,
+				path = path,
+			})
+		end
+	end
+
+	if #includes < 2 then
+		return
+	end
+
+	table.sort(includes, function(a, b)
+		if a.opening ~= b.opening then
+			return a.opening == "<"
+		end
+
+		return a.path:lower() < b.path:lower()
+	end)
+
+	for i, index in ipairs(indexes) do
+		lines[index] = includes[i].line
+	end
+end
+
 local function parse_args(text)
 	local args = {}
 	local depth = 0
@@ -162,6 +196,7 @@ function M.align()
 		if block.blank then
 			table.insert(out, "")
 		else
+			align_includes(block)
 			align_equals(block)
 			align_functions(block)
 
